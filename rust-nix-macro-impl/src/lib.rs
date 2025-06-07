@@ -119,6 +119,7 @@ fn generate_code_from_ast(ast: Ast) -> TokenStream2 {
 
 #[proc_macro]
 pub fn nix(input: TokenStream) -> TokenStream {
+    // TODO: using syn would probably be better but I am too dumb
     let code_as_string = input.to_string();
     let parsed = match NixParser::parse(Rule::nix_file, &code_as_string) {
         Ok(pairs) => pairs,
@@ -129,6 +130,7 @@ pub fn nix(input: TokenStream) -> TokenStream {
                 .into();
         }
     };
+    // TODO: propagate errors properly
     let expr_pair = parsed
         .into_iter()
         .next()

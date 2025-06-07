@@ -11,13 +11,10 @@ interpolation = { "${" ~ expr ~ "}" }
 escaped_quote = @{ "\\" ~ "\"" }
 escaped_interpolation = @{ "''${" }
 
-// Literal text is anything that doesn't start a special sequence.
-// Special starters are: ", $, \, '
 string_literal_part = @{ ( !("\"" | "$" | "\\" | "'") ~ ANY )+ }
 dollar_literal = @{ "$" ~ !("{") }
 single_quote_literal = @{ "'" ~ !"'" }
 
-// The order is important: match specific escapes before general text.
 string_content = {
     escaped_quote |
     escaped_interpolation |

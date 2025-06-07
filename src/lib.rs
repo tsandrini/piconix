@@ -14,5 +14,4 @@ pub enum Expr {
     AttrSet(Vec<(String, Expr)>),
 }
 
-// Re-export the procedural macro from the implementation crate.
 pub use rust_nix_macro_impl::nix;
