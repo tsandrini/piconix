@@ -4,7 +4,30 @@ COMMENT    = _{ "#" ~ (!"\n" ~ ANY)* }
 integer    = @{ "-"? ~ ASCII_DIGIT+ }
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
 
-expr = { list | attrset | integer | identifier }
+expr = { list | attrset | string | integer | identifier }
+
+interpolation = { "${" ~ expr ~ "}" }
+
+escaped_quote = @{ "\\" ~ "\"" }
+escaped_interpolation = @{ "''${" }
+
+// Literal text is anything that doesn't start a special sequence.
+// Special starters are: ", $, \, '
+string_literal_part = @{ ( !("\"" | "$" | "\\" | "'") ~ ANY )+ }
+dollar_literal = @{ "$" ~ !("{") }
+single_quote_literal = @{ "'" ~ !"'" }
+
+// The order is important: match specific escapes before general text.
+string_content = {
+    escaped_quote |
+    escaped_interpolation |
+    interpolation |
+    string_literal_part |
+    dollar_literal |
+    single_quote_literal
+}
+
+string = { "\"" ~ string_content* ~ "\"" }
 
 binding = { identifier ~ "=" ~ expr ~ ";" }
 attrset = { "{" ~ binding* ~ "}" }
