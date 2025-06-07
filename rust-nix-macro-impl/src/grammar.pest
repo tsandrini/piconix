@@ -1,0 +1,14 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+COMMENT    = _{ "#" ~ (!"\n" ~ ANY)* }
+
+integer    = @{ "-"? ~ ASCII_DIGIT+ }
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+
+expr = { list | attrset | integer | identifier }
+
+binding = { identifier ~ "=" ~ expr ~ ";" }
+attrset = { "{" ~ binding* ~ "}" }
+
+list = { "[" ~ expr* ~ "]" }
+
+nix_file = { SOI ~ expr ~ EOI }

@@ -1,6 +1,16 @@
+[workspace]
+members = [
+    "rust-nix-macro-impl",
+]
+
 [package]
 name = "rust-nix-macro"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rust-nix-macro-impl = { path = "rust-nix-macro-impl" }
+
+[[bin]]
+name = "run-macro-test"
+path = "src/main.rs"
