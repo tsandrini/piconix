@@ -11,6 +11,7 @@ pub enum EvaluationError {
 
 pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, EvaluationError> {
     match expr {
+        // NixExpr::Value(NixValue::Null) => Ok(NixExpr::Value(NixValue::Null)),
         NixExpr::Value(_) => Ok(expr.clone()),
 
         NixExpr::Ref(name) => scope
@@ -70,6 +71,7 @@ fn expr_to_string(expr: &NixExpr) -> Result<String, EvaluationError> {
             NixValue::Int(i) => Ok(i.to_string()),
             NixValue::Float(f) => Ok(f.to_string()),
             NixValue::Bool(b) => Ok(b.to_string()),
+            NixValue::Null => Ok("null".to_string()),
         },
         _ => Err(EvaluationError::TypeMismatch(
             "Cannot interpolate this expression type into a string.".to_string(),

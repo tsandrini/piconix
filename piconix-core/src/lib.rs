@@ -10,6 +10,7 @@ pub enum NixValue {
     Float(f64),
     Bool(bool),
     String(String),
+    Null,
 }
 
 #[derive(Debug, Clone, PartialEq)]

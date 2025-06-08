@@ -3,7 +3,11 @@
 // ---------------------------------------------------------------------
 source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
 nix_expression = { term }
-binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
+// binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
+
+identifier_str      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier = { identifier_str ~ ("." ~ identifier_str)* }
+binding = { identifier ~ "=" ~ nix_expression ~ ";" }
 
 // ---------------------------------------------------------------------
 // Terms - The building blocks of an expression.
@@ -12,9 +16,10 @@ term = {
     list |
     attrset |
     string |
+    null |
+    boolean |
     float |      // float must be checked before integer
     integer |
-    boolean |    // boolean must be checked before identifier
     identifier
 }
 
@@ -27,10 +32,10 @@ attrset = { "{" ~ (WHITESPACE* ~ binding ~ WHITESPACE*)* ~ "}" }
 // ---------------------------------------------------------------------
 // Literals & Identifiers
 // ---------------------------------------------------------------------
-identifier      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
 integer         = @{ ("-")? ~ ASCII_DIGIT+ }
 float           = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 boolean         = @{ "true" | "false" }
+null            = @{ "null" }
 
 // ---------------------------------------------------------------------
 // String literal + escaping

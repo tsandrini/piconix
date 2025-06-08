@@ -17,6 +17,9 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
             NixValue::String(s) => {
                 quote! { ::piconix::NixExpr::Value(::piconix::NixValue::String(#s.to_string())) }
             }
+            NixValue::Null => {
+                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Null) }
+            }
         },
         NixExpr::InterpolatedString(parts) => {
             let quoted_parts = parts.iter().map(|part| match part {
