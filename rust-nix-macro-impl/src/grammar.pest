@@ -1,20 +1,49 @@
-WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
-COMMENT    = _{ "#" ~ (!"\n" ~ ANY)* }
+// ---------------------------------------------------------------------
+// Main rules
+// ---------------------------------------------------------------------
+source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
+nix_expression = { term } // An expression is now defined as a single "term"
+binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
 
-integer    = @{ "-"? ~ ASCII_DIGIT+ }
-identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+// ---------------------------------------------------------------------
+// Terms - The building blocks of an expression.
+// The order here is CRITICAL. More specific rules must come first.
+// ---------------------------------------------------------------------
+term = {
+    list |
+    attrset |
+    string |
+    float |      // float must be checked before integer
+    integer |
+    boolean |    // boolean must be checked before identifier
+    identifier
+}
 
-expr = { list | attrset | string | integer | identifier }
+// ---------------------------------------------------------------------
+// Complex Types
+// ---------------------------------------------------------------------
+// Added WHITESPACE* to correctly handle spacing between elements.
+list    = { "[" ~ (WHITESPACE* ~ nix_expression ~ WHITESPACE*)* ~ "]" }
+attrset = { "{" ~ (WHITESPACE* ~ binding ~ WHITESPACE*)* ~ "}" }
 
-interpolation = { "${" ~ expr ~ "}" }
+// ---------------------------------------------------------------------
+// Literals & Identifiers
+// ---------------------------------------------------------------------
+identifier      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+integer         = @{ ("-")? ~ ASCII_DIGIT+ }
+float           = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+boolean         = @{ "true" | "false" }
 
-escaped_quote = @{ "\\" ~ "\"" }
+// ---------------------------------------------------------------------
+// String literal + escaping
+// ---------------------------------------------------------------------
+string                = { "\"" ~ string_content* ~ "\"" }
+interpolation         = { "${" ~ nix_expression ~ "}" }
+escaped_quote         = @{ "\\" ~ "\"" }
 escaped_interpolation = @{ "''${" }
-
-string_literal_part = @{ ( !("\"" | "$" | "\\" | "'") ~ ANY )+ }
-dollar_literal = @{ "$" ~ !("{") }
-single_quote_literal = @{ "'" ~ !"'" }
-
+string_literal_part   = @{ ( !("\"" | "$" | "\\" | "'") ~ ANY )+ }
+dollar_literal        = @{ "$" ~ !("{") }
+single_quote_literal  = @{ "'" ~ !"'" }
 string_content = {
     escaped_quote |
     escaped_interpolation |
@@ -24,11 +53,8 @@ string_content = {
     single_quote_literal
 }
 
-string = { "\"" ~ string_content* ~ "\"" }
-
-binding = { identifier ~ "=" ~ expr ~ ";" }
-attrset = { "{" ~ binding* ~ "}" }
-
-list = { "[" ~ expr* ~ "]" }
-
-nix_file = { SOI ~ expr ~ EOI }
+// ---------------------------------------------------------------------
+// Whitespace and comments
+// ---------------------------------------------------------------------
+COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " | "\t" | NEWLINE | COMMENT }

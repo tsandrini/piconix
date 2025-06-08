@@ -11,18 +11,26 @@ use rust_nix_macro::nix;
 // - derivations
 fn main() {
     let nix_expression = nix!({
-        a = 1;
-        world = "dlrow";
-        reference = a;
-        b = "hello ${world}!";
-        c = [1 2 3];
-        escaped = "hello ''${world}! + escaped quotes \"\"\" hehe";
-        d = {
-            e = "nested";
-            f = 42;
-            deep = {
-                g = "deeply nested";
-                h = "another level";
+        nums = {
+            simpleInt = 5;
+            negInt = -42;
+            simpleFloat = 3.2121;
+            negFloat = -2.7;
+        };
+        positive = true;
+        negative = false;
+        strings = {
+            simple = "dlrow";
+            interpolated = "hello ${world}!";
+            escaped = "hello ''${world}! + escaped quotes \"\"\" hehe";
+        };
+        list = [ 1 2 3 "four" true false ];
+        emtpyList = [];
+        attrset = {
+            deeplyNested = {
+                a = 1;
+                b = 2;
+                c = 3;
             };
         };
         empty = {};
