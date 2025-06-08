@@ -1,5 +1,5 @@
 [package]
-name = "piconix-macro-impl"
+name = "rust-tinynix-macro-impl"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,5 +8,5 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1.0.95"
-piconix-core = { path = "../piconix-core" }
+rust-tinynix-core = { path = "../rust-tinynix-core" }
 syn = "2.0"

@@ -151,36 +151,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "piconix"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "piconix-core",
- "piconix-macro-impl",
-]
-
-[[package]]
-name = "piconix-core"
-version = "0.1.0"
-dependencies = [
- "home",
- "indexmap",
- "pest",
- "pest_derive",
- "proc-macro2",
- "quote",
-]
-
-[[package]]
-name = "piconix-macro-impl"
-version = "0.1.0"
-dependencies = [
- "piconix-core",
- "proc-macro2",
- "syn",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -196,6 +166,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rust-tinynix"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "rust-tinynix-core",
+ "rust-tinynix-macro-impl",
+]
+
+[[package]]
+name = "rust-tinynix-core"
+version = "0.1.0"
+dependencies = [
+ "home",
+ "indexmap",
+ "pest",
+ "pest_derive",
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "rust-tinynix-macro-impl"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "rust-tinynix-core",
+ "syn",
 ]
 
 [[package]]

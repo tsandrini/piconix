@@ -1,4 +1,4 @@
-use piconix::nix;
+use rust_tinynix::nix;
 
 // TODO:s
 // - evaluation

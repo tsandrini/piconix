@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "piconix",
-    "piconix-core",
-    "piconix-macro-impl",
+    "rust-tinynix",
+    "rust-tinynix-core",
+    "rust-tinynix-macro-impl",
 ]

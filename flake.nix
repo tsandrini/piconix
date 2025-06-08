@@ -1,6 +1,6 @@
 # --- flake.nix
 {
-  description = "piconix: I don't know what I'm doing.";
+  description = "Custom nixlang toy tinyyyy compiler targetted mainly for a Rust nix! macro usage.";
 
   inputs = {
     # --- BASE DEPENDENCIES ---

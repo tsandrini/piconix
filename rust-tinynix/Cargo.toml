@@ -1,0 +1,13 @@
+[package]
+name = "rust-tinynix"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rust-tinynix-core = { path = "../rust-tinynix-core" }
+rust-tinynix-macro-impl = { path = "../rust-tinynix-macro-impl" }
+indexmap = "2.2.6"
+
+[[bin]]
+name = "run-macro-test"
+path = "src/main.rs"

@@ -6,45 +6,45 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
     match ast {
         NixExpr::Value(value) => match value {
             NixValue::Int(i) => {
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Int(#i)) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Int(#i)) }
             }
             NixValue::Float(f) => {
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Float(#f)) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Float(#f)) }
             }
             NixValue::Bool(b) => {
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Bool(#b)) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Bool(#b)) }
             }
             NixValue::String(s) => {
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::String(#s.to_string())) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::String(#s.to_string())) }
             }
             NixValue::Null => {
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Null) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Null) }
             }
             NixValue::Path(p) => {
                 // TODO doublecheck this
                 let path_str = p.to_str().expect("Path is not valid UTF-8");
-                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Path(::std::path::PathBuf::from(#path_str))) }
+                quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Path(::std::path::PathBuf::from(#path_str))) }
             }
         },
         NixExpr::InterpolatedString(parts) => {
             let quoted_parts = parts.iter().map(|part| match part {
                 NixStringPart::Literal(s) => {
-                    quote! { ::piconix::NixStringPart::Literal(#s.to_string()) }
+                    quote! { ::rust_tinynix::NixStringPart::Literal(#s.to_string()) }
                 }
                 NixStringPart::Interpolation(ast) => {
                     let quoted_ast = generate_token_stream(ast); // Recursive call
-                    quote! { ::piconix::NixStringPart::Interpolation(Box::new(#quoted_ast)) }
+                    quote! { ::rust_tinynix::NixStringPart::Interpolation(Box::new(#quoted_ast)) }
                 }
             });
-            quote! { ::piconix::NixExpr::InterpolatedString(vec![#(#quoted_parts),*]) }
+            quote! { ::rust_tinynix::NixExpr::InterpolatedString(vec![#(#quoted_parts),*]) }
         }
         NixExpr::SearchPath(s) => {
-            quote! { ::piconix::NixExpr::SearchPath(#s.to_string()) }
+            quote! { ::rust_tinynix::NixExpr::SearchPath(#s.to_string()) }
         }
-        NixExpr::Ref(s) => quote! { ::piconix::NixExpr::Ref(#s.to_string()) },
+        NixExpr::Ref(s) => quote! { ::rust_tinynix::NixExpr::Ref(#s.to_string()) },
         NixExpr::List(items) => {
             let quoted_items = items.iter().map(generate_token_stream);
-            quote! { ::piconix::NixExpr::List(vec![#(#quoted_items),*]) }
+            quote! { ::rust_tinynix::NixExpr::List(vec![#(#quoted_items),*]) }
         }
         NixExpr::AttrSet(bindings) => {
             let quoted_bindings = bindings.iter().map(|(k, v)| {
@@ -53,7 +53,7 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
                 quote! { (#key_str.to_string(), #val_ast) }
             });
             quote! {
-                ::piconix::NixExpr::AttrSet(
+                ::rust_tinynix::NixExpr::AttrSet(
                     vec![#(#quoted_bindings),*].into_iter().collect()
                 )
             }

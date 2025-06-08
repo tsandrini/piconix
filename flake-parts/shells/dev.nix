@@ -19,7 +19,7 @@
 let
   scripts = {
     rename-project = writeShellScriptBin "rename-project" ''
-      find $1 \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i "s/rust-nix-macro/$2/g"
+      find $1 \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i "s/rust-tinynix/$2/g"
     '';
   };
 
@@ -66,6 +66,6 @@ mkShell {
     ${lib.optionalString (pre-commit != null) pre-commit.installationScript}
 
     # Welcome splash text
-    echo ""; echo -e "\e[1;37;42mWelcome to the rust-nix-macro devshell!\e[0m"; echo ""
+    echo ""; echo -e "\e[1;37;42mWelcome to the rust-tinynix devshell!\e[0m"; echo ""
   '';
 }
