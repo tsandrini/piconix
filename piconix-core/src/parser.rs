@@ -8,7 +8,7 @@ struct NixParser;
 
 fn build_nix_expr_from_pair(pair: pest::iterators::Pair<Rule>) -> NixExpr {
     match pair.as_rule() {
-        Rule::nix_expression | Rule::term => {
+        Rule::nix_expression => {
             build_nix_expr_from_pair(pair.into_inner().next().unwrap())
         }
 

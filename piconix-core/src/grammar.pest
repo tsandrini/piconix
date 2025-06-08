@@ -2,17 +2,17 @@
 // Main rules
 // ---------------------------------------------------------------------
 source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
-nix_expression = { term }
 // binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
 
-identifier_str      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
-identifier = { identifier_str ~ ("." ~ identifier_str)* }
-binding = { identifier ~ "=" ~ nix_expression ~ ";" }
+identifier_simple = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier_part   = { identifier_simple | string }
+identifier        = { identifier_part ~ ("." ~ identifier_part)* }
+binding           = { identifier ~ "=" ~ nix_expression ~ ";" }
 
 // ---------------------------------------------------------------------
 // Terms - The building blocks of an expression.
 // ---------------------------------------------------------------------
-term = {
+nix_expression = {
     list |
     attrset |
     string |
