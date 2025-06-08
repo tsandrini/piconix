@@ -38,6 +38,13 @@ fn main() {
             };
             empty = {};
         };
+        paths = {
+            nixpkgs = <nixpkgs>;
+            bin = /bin;
+            home = ~/.;
+            local = ./src/main.rs;
+            localPrev = ../piconix;
+        };
         config = {
             services.myService.enable = true;
             services.myService.configFile = null;

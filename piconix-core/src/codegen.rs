@@ -20,6 +20,11 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
             NixValue::Null => {
                 quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Null) }
             }
+            NixValue::Path(p) => {
+                // TODO doublecheck this
+                let path_str = p.to_str().expect("Path is not valid UTF-8");
+                quote! { ::piconix::NixExpr::Value(::piconix::NixValue::Path(::std::path::PathBuf::from(#path_str))) }
+            }
         },
         NixExpr::InterpolatedString(parts) => {
             let quoted_parts = parts.iter().map(|part| match part {
@@ -32,6 +37,9 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
                 }
             });
             quote! { ::piconix::NixExpr::InterpolatedString(vec![#(#quoted_parts),*]) }
+        }
+        NixExpr::SearchPath(s) => {
+            quote! { ::piconix::NixExpr::SearchPath(#s.to_string()) }
         }
         NixExpr::Ref(s) => quote! { ::piconix::NixExpr::Ref(#s.to_string()) },
         NixExpr::List(items) => {

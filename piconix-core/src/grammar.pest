@@ -18,7 +18,9 @@ nix_expression = {
     string |
     null |
     boolean |
-    float |      // float must be checked before integer
+    float |
+    path |
+    search_path |
     integer |
     identifier
 }
@@ -36,6 +38,13 @@ integer         = @{ ("-")? ~ ASCII_DIGIT+ }
 float           = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 boolean         = @{ "true" | "false" }
 null            = @{ "null" }
+search_path     = { "<" ~ identifier_simple ~ ">" } // e.g. <nixpkgs>
+path = @{
+    // Part 1: Handles paths starting with known prefixes: ~/ ../ ./ /
+    ( "~/" | "../" | "./" | "/" ) ~ ( ( !( WHITESPACE | ";" ) ~ ANY )* ) |
+    // Part 2: Handles paths like `foo/bar` that start with an identifier.
+    identifier_simple ~ ( "/" ~ ( !( WHITESPACE | ";" ) ~ ANY )* )+
+}
 
 // ---------------------------------------------------------------------
 // String literal + escaping
@@ -60,4 +69,4 @@ string_content = {
 // Whitespace and comments
 // ---------------------------------------------------------------------
 COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
-WHITESPACE = _{ " " | "\t" | NEWLINE | COMMENT }
+WHITESPACE = _{ " " | "\t" | NEWLINE }

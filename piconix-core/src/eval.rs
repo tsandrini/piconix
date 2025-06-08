@@ -37,6 +37,11 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
                 .collect::<Result<IndexMap<_, _>, _>>()?;
             Ok(NixExpr::AttrSet(evaluated_bindings))
         }
+        NixExpr::SearchPath(path) => {
+            // For now, we just return the search path as is.
+            // In a real implementation, you might resolve this to a list of paths.
+            Ok(NixExpr::SearchPath(path.clone()))
+        }
 
         NixExpr::InterpolatedString(parts) => {
             let mut result = String::new();
@@ -72,6 +77,10 @@ fn expr_to_string(expr: &NixExpr) -> Result<String, EvaluationError> {
             NixValue::Float(f) => Ok(f.to_string()),
             NixValue::Bool(b) => Ok(b.to_string()),
             NixValue::Null => Ok("null".to_string()),
+            NixValue::Path(p) => p
+                .to_str()
+                .map(|s| s.to_string())
+                .ok_or_else(|| EvaluationError::TypeMismatch("Invalid path".to_string())),
         },
         _ => Err(EvaluationError::TypeMismatch(
             "Cannot interpolate this expression type into a string.".to_string(),
