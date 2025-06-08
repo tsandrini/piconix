@@ -160,15 +160,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-nix-macro"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "rust-nix-macro-impl",
-]
-
-[[package]]
-name = "rust-nix-macro-impl"
+name = "rust-nix-core"
 version = "0.1.0"
 dependencies = [
  "indexmap",
@@ -176,6 +168,23 @@ dependencies = [
  "pest_derive",
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "rust-nix-macro"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "rust-nix-core",
+ "rust-nix-macro-impl",
+]
+
+[[package]]
+name = "rust-nix-macro-impl"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "rust-nix-core",
  "syn",
 ]
 

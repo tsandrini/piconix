@@ -44,8 +44,15 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
                     NixStringPart::Literal(s) => result.push_str(s),
                     NixStringPart::Interpolation(expr_to_interpolate) => {
                         let evaluated_expr = nix_eval(expr_to_interpolate, scope)?;
-                        let s = expr_to_string(&evaluated_expr)?;
-                        result.push_str(&s);
+                        if let NixExpr::Value(NixValue::String(s)) = evaluated_expr {
+                            result.push_str(&s);
+                        } else {
+                            return Err(EvaluationError::TypeMismatch(
+                                "Expected a string for interpolation.".to_string(),
+                            ));
+                        }
+                        // let s = expr_to_string(&evaluated_expr)?;
+                        // result.push_str(&s);
                     }
                 }
             }
@@ -54,6 +61,8 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
     }
 }
 
+// This is a great idea, but cppnix doesn't do this.
+#[allow(dead_code)]
 fn expr_to_string(expr: &NixExpr) -> Result<String, EvaluationError> {
     match expr {
         NixExpr::Value(value) => match value {

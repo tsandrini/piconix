@@ -7,9 +7,6 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
+proc-macro2 = "1.0.95"
+rust-nix-core = { path = "../rust-nix-core" }
 syn = "2.0"
-quote = "1.0"
-pest = "2.7"
-pest_derive = "2.7"
-proc-macro2 = "1.0"
-indexmap = "2.9.0"

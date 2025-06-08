@@ -1,0 +1,13 @@
+[package]
+name = "rust-nix-macro"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rust-nix-core = { path = "../rust-nix-core" }
+rust-nix-macro-impl = { path = "../rust-nix-macro-impl" }
+indexmap = "2.2.6"
+
+[[bin]]
+name = "run-macro-test"
+path = "src/main.rs"

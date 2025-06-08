@@ -1,17 +1,7 @@
 [workspace]
+resolver = "2"
 members = [
+    "rust-nix-core",
+    "rust-nix-macro",
     "rust-nix-macro-impl",
 ]
-
-[package]
-name = "rust-nix-macro"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-indexmap = "2.9.0"
-rust-nix-macro-impl = { path = "rust-nix-macro-impl" }
-
-[[bin]]
-name = "run-macro-test"
-path = "src/main.rs"

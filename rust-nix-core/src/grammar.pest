@@ -2,12 +2,11 @@
 // Main rules
 // ---------------------------------------------------------------------
 source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
-nix_expression = { term } // An expression is now defined as a single "term"
+nix_expression = { term }
 binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
 
 // ---------------------------------------------------------------------
 // Terms - The building blocks of an expression.
-// The order here is CRITICAL. More specific rules must come first.
 // ---------------------------------------------------------------------
 term = {
     list |
@@ -22,7 +21,6 @@ term = {
 // ---------------------------------------------------------------------
 // Complex Types
 // ---------------------------------------------------------------------
-// Added WHITESPACE* to correctly handle spacing between elements.
 list    = { "[" ~ (WHITESPACE* ~ nix_expression ~ WHITESPACE*)* ~ "]" }
 attrset = { "{" ~ (WHITESPACE* ~ binding ~ WHITESPACE*)* ~ "}" }
 
