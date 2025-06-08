@@ -1,6 +1,6 @@
 # --- flake.nix
 {
-  description = "TODO Add description of your new project";
+  description = "piconix: I don't know what I'm doing.";
 
   inputs = {
     # --- BASE DEPENDENCIES ---

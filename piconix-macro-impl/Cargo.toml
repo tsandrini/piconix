@@ -1,5 +1,5 @@
 [package]
-name = "rust-nix-macro-impl"
+name = "piconix-macro-impl"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,5 +8,5 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1.0.95"
-rust-nix-core = { path = "../rust-nix-core" }
+piconix-core = { path = "../piconix-core" }
 syn = "2.0"

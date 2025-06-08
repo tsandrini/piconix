@@ -1,11 +1,11 @@
 [package]
-name = "rust-nix-macro"
+name = "piconix"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rust-nix-core = { path = "../rust-nix-core" }
-rust-nix-macro-impl = { path = "../rust-nix-macro-impl" }
+piconix-core = { path = "../piconix-core" }
+piconix-macro-impl = { path = "../piconix-macro-impl" }
 indexmap = "2.2.6"
 
 [[bin]]

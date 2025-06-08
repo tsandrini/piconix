@@ -7,7 +7,7 @@ pub fn nix(input: TokenStream) -> TokenStream {
     let span = tokens.span();
     let code_as_string = tokens.to_string();
 
-    let ast = match rust_nix_core::parser::parse(&code_as_string) {
+    let ast = match piconix_core::parser::parse(&code_as_string) {
         Ok(ast) => ast,
         Err(e) => {
             // Use the span we captured earlier for a precise error location.
@@ -17,5 +17,5 @@ pub fn nix(input: TokenStream) -> TokenStream {
         }
     };
 
-    rust_nix_core::codegen::generate_token_stream(&ast).into()
+    piconix_core::codegen::generate_token_stream(&ast).into()
 }
