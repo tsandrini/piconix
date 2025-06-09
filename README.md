@@ -55,12 +55,10 @@ fn main() {
         "admin_email_from_rust" => NixExpr::Value(NixValue::String(admin_email.to_string())),
     };
     println!("--- Evaluating Nix expression ---");
-    let nix_evaluated = rust_tinynix::nix_eval(&nix_config_function, &scope)
-        .expect("Evaluation failed");
+    let nix_evaluated = rust_tinynix::nix_eval(&nix_config_function, &scope).expect("Evaluation failed");
     println!("✅ Evaluation complete!");
 
-    //  manipulating the result in Rust
-    println!("\n--- Manipulating Nix data in Rust ---");
+    println!("--- Manipulating Nix data in Rust ---");
     let mut users: Vec<String> = extract_users(&nix_evaluated);
 
     println!("Users from Nix: {:?}", users);
@@ -69,7 +67,7 @@ fn main() {
 
     // 🤯 Generate a NEW Nix expression from our Rust data.
     // This shows the two-way data flow between Rust and Nix.
-    println!("\n--- Generating a new Nix expression ---");
+    println!("--- Generating a new Nix expression ---");
     let deployment_script = nix!({
         description = "Deployment script for ${domain_name}";
         tasks = [
