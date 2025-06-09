@@ -27,7 +27,10 @@ pub enum NixExpr {
     InterpolatedString(Vec<NixStringPart>),
     Ref(String),
     List(Vec<NixExpr>),
-    AttrSet(IndexMap<String, NixExpr>),
+    AttrSet {
+        recursive: bool,
+        bindings: IndexMap<String, NixExpr>,
+    },
     SearchPath(String),
     // Future additions:
     // Function(...)

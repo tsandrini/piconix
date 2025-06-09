@@ -1,54 +1,63 @@
-// ---------------------------------------------------------------------
-// Main rules
-// ---------------------------------------------------------------------
+// =====================================================================
+// 1. Whitespace & Source
+// =====================================================================
+COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " | "\t" | NEWLINE }
 source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
-// binding = { identifier ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ ";" }
 
-identifier_simple = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
-identifier_part   = { identifier_simple | string }
-identifier        = { identifier_part ~ ("." ~ identifier_part)* }
-binding           = { identifier ~ "=" ~ nix_expression ~ ";" }
+// =====================================================================
+// 2. Keywords
+// =====================================================================
+// A single source of truth for all reserved words.
+keywords = _{ "rec" | "inherit" | "true" | "false" | "null" }
 
-// ---------------------------------------------------------------------
-// Terms - The building blocks of an expression.
-// ---------------------------------------------------------------------
-nix_expression = {
-    list |
+// =====================================================================
+// 3. Expressions (Hierarchical)
+// =====================================================================
+nix_expression = { primary_expr } // We will add let_in_expr, with_expr, etc. here later
+
+primary_expr = {
+    literal |
     attrset |
-    string |
-    null |
-    boolean |
-    float |
-    path |
-    search_path |
-    integer |
-    identifier
+    list |
+    path_types |
+    identifier |
+    "(" ~ nix_expression ~ ")"
 }
 
-// ---------------------------------------------------------------------
-// Complex Types
-// ---------------------------------------------------------------------
-list    = { "[" ~ (WHITESPACE* ~ nix_expression ~ WHITESPACE*)* ~ "]" }
-attrset = { "{" ~ (WHITESPACE* ~ binding ~ WHITESPACE*)* ~ "}" }
+// =====================================================================
+// 4. Building Blocks & Literals
+// =====================================================================
 
-// ---------------------------------------------------------------------
-// Literals & Identifiers
-// ---------------------------------------------------------------------
-integer         = @{ ("-")? ~ ASCII_DIGIT+ }
-float           = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
-boolean         = @{ "true" | "false" }
-null            = @{ "null" }
-search_path     = { "<" ~ identifier_simple ~ ">" } // e.g. <nixpkgs>
+// -- Identifiers --
+identifier_simple = @{ !keywords ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier_part   = { identifier_simple | string }
+identifier        = { identifier_part ~ ("." ~ identifier_part)* }
+
+// -- Literals --
+literal = { string | float | integer | boolean | null }
+integer = @{ ("-")? ~ ASCII_DIGIT+ }
+float   = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+boolean = @{ "true" | "false" }
+null    = @{ "null" }
+
+// -- Paths --
+path_types  = { search_path | path }
+search_path = { "<" ~ identifier_simple ~ ">" }
 path = @{
-    // Part 1: Handles paths starting with known prefixes: ~/ ../ ./ /
     ( "~/" | "../" | "./" | "/" ) ~ ( ( !( WHITESPACE | ";" ) ~ ANY )* ) |
-    // Part 2: Handles paths like `foo/bar` that start with an identifier.
     identifier_simple ~ ( "/" ~ ( !( WHITESPACE | ";" ) ~ ANY )* )+
 }
 
-// ---------------------------------------------------------------------
-// String literal + escaping
-// ---------------------------------------------------------------------
+// -- Collections and Bindings --
+list            = { "[" ~ nix_expression* ~ "]" }
+rec             = { "rec" }
+attr_binding    = { binding | inherit_binding }
+attrset         = { rec? ~ "{" ~ attr_binding* ~ "}" }
+binding         = { identifier ~ "=" ~ nix_expression ~ ";" }
+inherit_binding = { "inherit" ~ ("(" ~ identifier ~ ")")? ~ identifier_simple+ ~ ";" }
+
+// -- Strings and interpolations --
 string                = { "\"" ~ string_content* ~ "\"" }
 interpolation         = { "${" ~ nix_expression ~ "}" }
 escaped_quote         = @{ "\\" ~ "\"" }
@@ -64,9 +73,3 @@ string_content = {
     dollar_literal |
     single_quote_literal
 }
-
-// ---------------------------------------------------------------------
-// Whitespace and comments
-// ---------------------------------------------------------------------
-COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
-WHITESPACE = _{ " " | "\t" | NEWLINE }

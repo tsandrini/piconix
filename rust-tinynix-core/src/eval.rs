@@ -27,7 +27,10 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
             Ok(NixExpr::List(evaluated_items))
         }
 
-        NixExpr::AttrSet(bindings) => {
+        NixExpr::AttrSet {
+            recursive,
+            bindings,
+        } => {
             let evaluated_bindings = bindings
                 .iter()
                 .map(|(key, value)| {
@@ -35,13 +38,12 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
                     Ok((key.clone(), evaluated_value))
                 })
                 .collect::<Result<IndexMap<_, _>, _>>()?;
-            Ok(NixExpr::AttrSet(evaluated_bindings))
+            Ok(NixExpr::AttrSet {
+                recursive: *recursive,
+                bindings: evaluated_bindings,
+            })
         }
-        NixExpr::SearchPath(path) => {
-            // For now, we just return the search path as is.
-            // In a real implementation, you might resolve this to a list of paths.
-            Ok(NixExpr::SearchPath(path.clone()))
-        }
+        NixExpr::SearchPath(path) => Ok(NixExpr::SearchPath(path.clone())),
 
         NixExpr::InterpolatedString(parts) => {
             let mut result = String::new();

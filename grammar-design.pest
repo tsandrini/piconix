@@ -1,0 +1,129 @@
+// =====================================================================
+// 1. Whitespace & Source
+// =====================================================================
+COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
+
+// =====================================================================
+// 2. Keywords
+// =====================================================================
+// A single source of truth for all reserved words.
+// We can add `if`, `then`, `else`, etc. here as needed.
+keywords = _{ "rec" | "let" | "in" | "with" | "inherit" | "true" | "false" | "null" }
+
+// =====================================================================
+// 3. Expressions (Hierarchical)
+// =====================================================================
+
+// The top-level rule for any expression. Order is important for precedence.
+nix_expression = { let_in_expr | with_expr | function_expr | primary_expr } // if_expr would go here too
+
+// -- Complex Expressions --
+
+// let ... in:
+let_in_expr = { "let" ~ attr_bindings_block ~ "in" ~ nix_expression }
+
+// with ...; ...
+with_expr = { "with" ~ nix_expression ~ ";" ~ nix_expression }
+
+// NOTE: functions are not in scope yet, but show how it would fit
+function_expr = { identifier_simple ~ ":" ~ nix_expression }
+
+// -- Primary Expressions --
+
+// Represents a single, non-keyword-led value or a grouped expression.
+primary_expr = {
+    literal |
+    attrset |
+    list |
+    path_types |
+    identifier |
+    "(" ~ nix_expression ~ ")" // Grouping expressions
+}
+
+// =====================================================================
+// 4. Building Blocks & Literals
+// =====================================================================
+// -- Identifiers --
+identifier_simple = @{ !keywords ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier_part   = { identifier_simple | string }
+identifier        = { identifier_part ~ ("." ~ identifier_part)* }
+
+// -- Literals --
+literal = { string | float | integer | boolean | null }
+integer = @{ ("-")? ~ ASCII_DIGIT+ }
+float   = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+boolean = @{ "true" | "false" }
+null    = @{ "null" }
+
+// -- Paths --
+path_types  = { search_path | path }
+search_path = { "<" ~ identifier_simple ~ ">" }
+path = @{
+    ( "~/" | "../" | "./" | "/" ) ~ ( ( !( WHITESPACE | ";" ) ~ ANY )* ) |
+    identifier_simple ~ ( "/" ~ ( !( WHITESPACE | ";" ) ~ ANY )* )+
+}
+
+// -- Collections and Bindings --
+list    = { "[" ~ nix_expression* ~ "]" }
+attrset = { rec? ~ "{" ~ attr_bindings_block? ~ "}" }
+
+// A block of bindings for `attrset` and `let`
+attr_bindings_block = { attr_binding+ }
+attr_binding      = { binding | inherit_binding }
+binding           = { identifier ~ "=" ~ nix_expression ~ ";" }
+inherit_binding   = { "inherit" ~ WHITESPACE* ~ ("(" ~ nix_expression ~ ")")? ~ WHITESPACE* ~ identifier_simple+ ~ ";" }
+
+// -- Strings and Interpolations --
+string                = { "\"" ~ string_content* ~ "\"" }
+interpolation         = { "${" ~ nix_expression ~ "}" }
+escaped_quote         = @{ "\\" ~ "\"" }
+escaped_interpolation = @{ "''${" }
+string_literal_part   = @{ ( !("\"" | "$" | "\\" | "'") ~ ANY )+ }
+dollar_literal        = @{ "$" ~ !("{") }
+single_quote_literal  = @{ "'" ~ !"'" }
+string_content = {
+    escaped_quote |
+    escaped_interpolation |
+    interpolation |
+    string_literal_part |
+    dollar_literal |
+    single_quote_literal
+}
+
+
+// =====================================================================
+// 4. Building Blocks & Literals
+// =====================================================================
+
+// -- Identifiers --
+// Now checks against the `keywords` rule.
+identifier_simple = @{ !keywords ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier_part   = { identifier_simple | string }
+identifier        = { identifier_part ~ ("." ~ identifier_part)* }
+
+// -- Literals --
+literal = { string | float | integer | boolean | null }
+integer = @{ ("-")? ~ ASCII_DIGIT+ }
+float   = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+boolean = @{ "true" | "false" }
+null    = @{ "null" }
+
+// -- Paths --
+path_types  = { search_path | path }
+search_path = { "<" ~ identifier_simple ~ ">" }
+path = @{
+    ( "~/" | "../" | "./" | "/" ) ~ ( ( !( WHITESPACE | ";" ) ~ ANY )* ) |
+    identifier_simple ~ ( "/" ~ ( !( WHITESPACE | ";" ) ~ ANY )* )+
+}
+
+// -- Collections and Bindings --
+list    = { "[" ~ nix_expression* ~ "]" }
+attrset = { rec? ~ "{" ~ attr_bindings_block? ~ "}" }
+
+// A block of bindings for `attrset` and `let`
+attr_bindings_block = { attr_binding+ }
+attr_binding      = { binding | inherit_binding }
+binding           = { identifier ~ "=" ~ nix_expression ~ ";" }
+inherit_binding   = { "inherit" ~ WHITESPACE* ~ ("(" ~ nix_expression ~ ")")? ~ WHITESPACE* ~ identifier_simple+ ~ ";" }

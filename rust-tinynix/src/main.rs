@@ -10,7 +10,7 @@ use rust_tinynix::nix;
 // - implement thunks
 // - derivations
 fn main() {
-    let nix_expression = nix!({
+    let nix_expression = nix!(rec {
         basicExample = {
             nums = {
                 simpleInt = 5;
@@ -44,6 +44,10 @@ fn main() {
             home = ~/.;
             local = ./src/main.rs;
             localPrev = ../piconix;
+        };
+        keywords = rec {
+            inherit user;
+            inherit (config.services.myService) enable configFile;
         };
         config = {
             services.myService.enable = true;
