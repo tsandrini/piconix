@@ -3,84 +3,71 @@
 ## Description
 
 My random attempt at writing a toy tiny nixlang compiler in Rust, with the main
-purpose of writing `nix!` macros such as
+purpose of writing `nix!` macros.
 
-TODO: A random example showcasing what kind of syntax and flow this project
-is trying to achieve, some of it is already supported and some of it isn't.
+This project is still WIP, so far the following syntax/semantics have been
+implemented:
 
 ```rust
-use rust_tinynix::{nix, NixExpr, NixValue, NixStringPart, Scope, EvaluationError};
-use indexmap::{indexmap, IndexMap};
-
-use rust_tinynix::{nix, NixExpr, NixValue, Scope};
+use rust_tinynix::nix;
 
 fn main() {
-    // 🍊 Define native Rust variables.
-    let domain_name = "my-cool-project.dev";
-    let admin_email = "admin@my-cool-project.dev";
+    let nix_expression = nix!(rec {
+        basicExample = {
+            nums = {
+                simpleInt = 5;
+                negInt = -42;
+                simpleFloat = 3.2121;
+                negFloat = -2.7;
+            };
+            positive = true;
+            negative = false;
+            strings = {
+                simple = "dlrow";
+                interpolated = "hello ${simple}!";
+                interpolatedDotted = "hello.${basicExample.strings.simple}!";
+                escaped = "hello ''${world}! + escaped quotes \"\"\" hehe";
+            };
+            list = [ 1 2 3 "four" true false null ];
+            attrList = [ { a = 1; b = 2; c = 3; } { a = 4; b = 5; c = 6; } ];
+            emtpyList = [];
+            emptyAttrSet = {};
+        };
+        paths = {
+            nixpkgs = <nixpkgs>;
+            bin = /bin;
+            home = ~/.;
+            local = ./src/main.rs;
+            localPrev = ../piconix;
+        };
+        keywords = rec {
+            inherit user;
+            inherit (config.services.myService) enable configFile;
 
-    // 🚀 Use the `nix!` macro to write a Nix expression as a function.
-    // This showcases how configuration can be parameterized.
-    let nix_config_function = nix!(
-        # This is a native comment in nix!
-        # A Nix function accepting `pkgs` and `lib` with default values.
-        { pkgs ? <nixpkgs>, lib ? pkgs.lib }:
+            letInSimple = let x = 5; in x;
+            letInBlock = let
+              user1 = "alice";
+              user2 = "bob";
+            in {
+              inherit user1 user2;
+            };
+        };
+        config = {
+            services.myService.enable = true;
+            services.myService.configFile = null;
 
-        rec { # ✨ A recursive set makes self-reference clean and easy.
-            networking = {
-                hostName = "server1";
-                domain = domain_name_from_rust; # <-- Use Rust variables.
+            services.myService.config = {
+                enableSomething = true;
+                configOption = "config.txt";
+                package = inputs.flake.packages.myPackage;
             };
 
-            services.nginx = {
-                enable = true;
-                package = pkgs.nginx; # <-- Use arguments like `pkgs`.
-                httpPort = 80;
-                virtualHosts.primary = {
-                    serverName = networking.domain; # <-- `rec` makes this possible.
-                    adminEmail = admin_email_from_rust;
-                };
-            };
-
-            users.list = [ "alice" "bob" ];
-
-            # Call a function from a Nix library!
-            motd = lib.strings.toUpper "welcome to ${networking.hostName}";
-        }
-    );
-
-    // 📞 "Call" the Nix function from Rust and evaluate it.
-    let scope: Scope = indexmap! {
-        "domain_name_from_rust" => NixExpr::Value(NixValue::String(domain_name.to_string())),
-        "admin_email_from_rust" => NixExpr::Value(NixValue::String(admin_email.to_string())),
-    };
-    println!("--- Evaluating Nix expression ---");
-    let nix_evaluated = rust_tinynix::nix_eval(&nix_config_function, &scope).expect("Evaluation failed");
-    println!("✅ Evaluation complete!");
-
-    println!("--- Manipulating Nix data in Rust ---");
-    let mut users: Vec<String> = extract_users(&nix_evaluated);
-
-    println!("Users from Nix: {:?}", users);
-    users.push("charlie"); // Add a new user!
-    println!("Updated users in Rust: {:?}", users);
-
-    // 🤯 Generate a NEW Nix expression from our Rust data.
-    // This shows the two-way data flow between Rust and Nix.
-    println!("--- Generating a new Nix expression ---");
-    let deployment_script = nix!({
-        description = "Deployment script for ${domain_name}";
-        tasks = [
-            "1. Pull latest container from registry"
-            "2. Stop old container"
-            "3. Start new container"
-            "4. Notify users that deployment is complete"
-        ];
-        usersToNotify = users; # <-- Pass the updated Rust vector back to Nix!
-        domain_name = domain_name;
+            services."name with weird symbols !@#$%^&*() and spaces".enable = true;
+            services."${basicExample}".enable = true; # TODO fix this
+            services.myOtherService.enable = config.services.myService.enable;
+        };
     });
-
-    println!("Generated deployment script AST:\n{:#?}", deployment_script);
+    println!("{:#?}", nix_expression);
 }
 ```
 
