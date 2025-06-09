@@ -29,14 +29,7 @@ fn main() {
             list = [ 1 2 3 "four" true false null ];
             attrList = [ { a = 1; b = 2; c = 3; } { a = 4; b = 5; c = 6; } ];
             emtpyList = [];
-            attrset = {
-                deeplyNested = {
-                    a = 1;
-                    b = 2;
-                    c = 3;
-                };
-            };
-            empty = {};
+            emptyAttrSet = {};
         };
         paths = {
             nixpkgs = <nixpkgs>;
@@ -48,6 +41,14 @@ fn main() {
         keywords = rec {
             inherit user;
             inherit (config.services.myService) enable configFile;
+
+            letInSimple = let x = 5; in x;
+            letInBlock = let
+              user1 = "alice";
+              user2 = "bob";
+            in {
+              inherit user1 user2;
+            };
         };
         config = {
             services.myService.enable = true;
@@ -59,8 +60,6 @@ fn main() {
                 package = inputs.flake.packages.myPackage;
             };
 
-            # we can also do comments
-            # and also multiline!
             services."name with weird symbols !@#$%^&*() and spaces".enable = true;
             services."${basicExample}".enable = true; # TODO fix this
             services.myOtherService.enable = config.services.myService.enable;

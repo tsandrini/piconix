@@ -21,7 +21,6 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
                 quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Null) }
             }
             NixValue::Path(p) => {
-                // TODO doublecheck this
                 let path_str = p.to_str().expect("Path is not valid UTF-8");
                 quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Path(::std::path::PathBuf::from(#path_str))) }
             }
@@ -32,7 +31,7 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
                     quote! { ::rust_tinynix::NixStringPart::Literal(#s.to_string()) }
                 }
                 NixStringPart::Interpolation(ast) => {
-                    let quoted_ast = generate_token_stream(ast); // Recursive call
+                    let quoted_ast = generate_token_stream(ast);
                     quote! { ::rust_tinynix::NixStringPart::Interpolation(Box::new(#quoted_ast)) }
                 }
             });
@@ -45,6 +44,20 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
         NixExpr::List(items) => {
             let quoted_items = items.iter().map(generate_token_stream);
             quote! { ::rust_tinynix::NixExpr::List(vec![#(#quoted_items),*]) }
+        }
+        NixExpr::LetIn { bindings, body } => {
+            let quoted_bindings = bindings.iter().map(|(k, v)| {
+                let key_str = k;
+                let val_ast = generate_token_stream(v);
+                quote! { (#key_str.to_string(), #val_ast) }
+            });
+            let body_ast = generate_token_stream(body);
+            quote! {
+                ::rust_tinynix::NixExpr::LetIn {
+                    bindings: vec![#(#quoted_bindings),*].into_iter().collect(),
+                    body: Box::new(#body_ast),
+                }
+            }
         }
         NixExpr::AttrSet {
             recursive,

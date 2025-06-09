@@ -1,7 +1,8 @@
 use crate::{NixExpr, NixStringPart, NixValue};
 use indexmap::IndexMap;
 
-pub type Scope<'a> = IndexMap<&'a str, NixExpr>;
+// Scope now uses owned Strings for keys to allow for dynamic extension.
+pub type Scope = IndexMap<String, NixExpr>;
 
 #[derive(Debug, PartialEq)]
 pub enum EvaluationError {
@@ -9,15 +10,27 @@ pub enum EvaluationError {
     TypeMismatch(String),
 }
 
-pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, EvaluationError> {
+pub fn nix_eval(expr: &NixExpr, scope: &Scope) -> Result<NixExpr, EvaluationError> {
     match expr {
-        // NixExpr::Value(NixValue::Null) => Ok(NixExpr::Value(NixValue::Null)),
         NixExpr::Value(_) => Ok(expr.clone()),
 
         NixExpr::Ref(name) => scope
-            .get(name.as_str())
+            .get(name)
             .cloned()
             .ok_or_else(|| EvaluationError::UndefinedVariable(name.clone())),
+
+        NixExpr::LetIn { bindings, body } => {
+            // NOTE: This is a simplified, strict evaluation of let bindings.
+            // Nix's let bindings are lazy and mutually recursive. This implementation
+            // only supports bindings that refer to previously defined bindings in the same block.
+            let mut extended_scope = scope.clone();
+            for (key, value_expr) in bindings {
+                let evaluated_value = nix_eval(value_expr, &extended_scope)?;
+                extended_scope.insert(key.clone(), evaluated_value);
+            }
+            // The body is evaluated in the scope containing all let-bindings.
+            nix_eval(body, &extended_scope)
+        }
 
         NixExpr::List(items) => {
             let evaluated_items = items
@@ -31,6 +44,7 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
             recursive,
             bindings,
         } => {
+            // TODO: The `recursive` flag is not yet handled.
             let evaluated_bindings = bindings
                 .iter()
                 .map(|(key, value)| {
@@ -59,33 +73,10 @@ pub fn nix_eval<'a>(expr: &NixExpr, scope: &Scope<'a>) -> Result<NixExpr, Evalua
                                 "Expected a string for interpolation.".to_string(),
                             ));
                         }
-                        // let s = expr_to_string(&evaluated_expr)?;
-                        // result.push_str(&s);
                     }
                 }
             }
             Ok(NixExpr::Value(NixValue::String(result)))
         }
-    }
-}
-
-// This is a great idea, but cppnix doesn't do this.
-#[allow(dead_code)]
-fn expr_to_string(expr: &NixExpr) -> Result<String, EvaluationError> {
-    match expr {
-        NixExpr::Value(value) => match value {
-            NixValue::String(s) => Ok(s.clone()),
-            NixValue::Int(i) => Ok(i.to_string()),
-            NixValue::Float(f) => Ok(f.to_string()),
-            NixValue::Bool(b) => Ok(b.to_string()),
-            NixValue::Null => Ok("null".to_string()),
-            NixValue::Path(p) => p
-                .to_str()
-                .map(|s| s.to_string())
-                .ok_or_else(|| EvaluationError::TypeMismatch("Invalid path".to_string())),
-        },
-        _ => Err(EvaluationError::TypeMismatch(
-            "Cannot interpolate this expression type into a string.".to_string(),
-        )),
     }
 }

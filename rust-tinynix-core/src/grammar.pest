@@ -9,12 +9,13 @@ source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
 // 2. Keywords
 // =====================================================================
 // A single source of truth for all reserved words.
-keywords = _{ "rec" | "inherit" | "true" | "false" | "null" }
+keywords = _{ "rec" | "inherit" | "true" | "false" | "null" | "let" | "in" }
 
 // =====================================================================
 // 3. Expressions (Hierarchical)
 // =====================================================================
-nix_expression = { primary_expr } // We will add let_in_expr, with_expr, etc. here later
+nix_expression = { let_in_expr | primary_expr } // We will add let_in_expr, with_expr, etc. here later
+let_in_expr = { "let" ~ attr_binding+ ~ "in" ~ nix_expression }
 
 primary_expr = {
     literal |
@@ -30,7 +31,13 @@ primary_expr = {
 // =====================================================================
 
 // -- Identifiers --
-identifier_simple = @{ !keywords ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+identifier_simple = @{
+    // This checks that we are not parsing a keyword followed by a non-identifier character.
+    // This correctly distinguishes `in` (keyword) from `inputs` (identifier).
+    !(keywords ~ !(ASCII_ALPHANUMERIC | "_" | "-")) ~
+    (ASCII_ALPHA | "_") ~
+    (ASCII_ALPHANUMERIC | "_" | "-")*
+}
 identifier_part   = { identifier_simple | string }
 identifier        = { identifier_part ~ ("." ~ identifier_part)* }
 

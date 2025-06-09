@@ -32,6 +32,10 @@ pub enum NixExpr {
         bindings: IndexMap<String, NixExpr>,
     },
     SearchPath(String),
+    LetIn {
+        bindings: IndexMap<String, NixExpr>,
+        body: Box<NixExpr>,
+    },
     // Future additions:
     // Function(...)
     // Thunk(...)
