@@ -10,7 +10,7 @@ use rust_tinynix::nix;
 // - implement thunks
 // - derivations
 fn main() {
-    let nix_expression = nix!(rec {
+    let nix_expression = nix!({
         basicExample = {
             nums = {
                 simpleInt = 5;
@@ -42,6 +42,7 @@ fn main() {
             inherit user;
             inherit (config.services.myService) enable configFile;
 
+            withStatement = with { a = 1; b = 2; c = 3; }; user;
             letInSimple = let x = 5; in x;
             letInBlock = let
               user1 = "alice";
@@ -49,8 +50,12 @@ fn main() {
             in {
               inherit user1 user2;
             };
+            withLet = with let x = 5; in { a = x; b = x; }; a;
+            letInWith = let a = 1; in with { a = 2; }; a;
         };
         config = {
+            # Multiline nix comment!
+            # henloo :3
             services.myService.enable = true;
             services.myService.configFile = null;
 

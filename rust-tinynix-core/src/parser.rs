@@ -133,6 +133,22 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
                 .collect(),
         ),
 
+        Rule::with_expr => {
+            let mut pairs = pair.into_inner();
+            let environment_pair = pairs
+                .next()
+                .expect("with expression must have an environment");
+            let body_pair = pairs.next().expect("with expression must have a body");
+
+            let environment = build_nix_expr_from_pair(environment_pair, root);
+            let body = build_nix_expr_from_pair(body_pair, root);
+
+            NixExpr::With {
+                environment: Box::new(environment),
+                body: Box::new(body),
+            }
+        }
+
         Rule::let_in_expr => {
             let mut pairs = pair.into_inner();
             // The last element of a let_in_expr is always the body expression.

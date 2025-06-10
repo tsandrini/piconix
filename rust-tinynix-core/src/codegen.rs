@@ -45,6 +45,16 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
             let quoted_items = items.iter().map(generate_token_stream);
             quote! { ::rust_tinynix::NixExpr::List(vec![#(#quoted_items),*]) }
         }
+        NixExpr::With { environment, body } => {
+            let env_ast = generate_token_stream(environment);
+            let body_ast = generate_token_stream(body);
+            quote! {
+                ::rust_tinynix::NixExpr::With {
+                    environment: Box::new(#env_ast),
+                    body: Box::new(#body_ast),
+                }
+            }
+        }
         NixExpr::LetIn { bindings, body } => {
             let quoted_bindings = bindings.iter().map(|(k, v)| {
                 let key_str = k;

@@ -9,13 +9,14 @@ source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
 // 2. Keywords
 // =====================================================================
 // A single source of truth for all reserved words.
-keywords = _{ "rec" | "inherit" | "true" | "false" | "null" | "let" | "in" }
+keywords = _{ "rec" | "inherit" | "true" | "false" | "null" | "let" | "in" | "with" }
 
 // =====================================================================
 // 3. Expressions (Hierarchical)
 // =====================================================================
-nix_expression = { let_in_expr | primary_expr } // We will add let_in_expr, with_expr, etc. here later
-let_in_expr = { "let" ~ attr_binding+ ~ "in" ~ nix_expression }
+nix_expression = { let_in_expr | with_expr | primary_expr }
+let_in_expr    = { "let" ~ attr_binding+ ~ "in" ~ nix_expression }
+with_expr      = { "with" ~ nix_expression ~ ";" ~ nix_expression }
 
 primary_expr = {
     literal |
@@ -39,7 +40,7 @@ identifier_simple = @{
     (ASCII_ALPHANUMERIC | "_" | "-")*
 }
 identifier_part   = { identifier_simple | string }
-identifier        = { identifier_part ~ ("." ~ identifier_part)* }
+identifier        = @{ identifier_part ~ ("." ~ identifier_part)* }
 
 // -- Literals --
 literal = { string | float | integer | boolean | null }

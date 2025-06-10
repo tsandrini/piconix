@@ -40,6 +40,27 @@ pub fn nix_eval(expr: &NixExpr, scope: &Scope) -> Result<NixExpr, EvaluationErro
             Ok(NixExpr::List(evaluated_items))
         }
 
+        NixExpr::With { environment, body } => {
+            // NOTE: This is a simplified, strict evaluation of a with-expression.
+            // It expects the environment to evaluate to an AttrSet.
+            let evaluated_env = nix_eval(environment, scope)?;
+
+            if let NixExpr::AttrSet { bindings, .. } = evaluated_env {
+                let mut extended_scope = scope.clone();
+                // Add the bindings from the 'with' environment to the scope.
+                // This will shadow existing variables with the same name.
+                for (key, value) in bindings {
+                    extended_scope.insert(key, value);
+                }
+                // Evaluate the body in the newly extended scope.
+                nix_eval(body, &extended_scope)
+            } else {
+                Err(EvaluationError::TypeMismatch(
+                    "Expression in 'with' must evaluate to an attribute set.".to_string(),
+                ))
+            }
+        }
+
         NixExpr::AttrSet {
             recursive,
             bindings,
