@@ -1,5 +1,5 @@
 pub use rust_tinynix_core::{
-    NixExpr, NixStringPart, NixValue,
+    NixBinaryOp, NixExpr, NixStringPart, NixUnaryOp, NixValue,
     eval::{EvaluationError, Scope, nix_eval},
     nix_file, nix_str,
 };

@@ -1,4 +1,4 @@
-use crate::{NixExpr, NixStringPart, NixValue};
+use crate::{NixBinaryOp, NixExpr, NixStringPart, NixUnaryOp, NixValue};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -25,6 +25,34 @@ pub fn generate_token_stream(ast: &NixExpr) -> TokenStream {
                 quote! { ::rust_tinynix::NixExpr::Value(::rust_tinynix::NixValue::Path(::std::path::PathBuf::from(#path_str))) }
             }
         },
+        NixExpr::UnaryOp { op, expr } => {
+            let expr_ast = generate_token_stream(expr);
+            let op_token = match op {
+                NixUnaryOp::Neg => quote! { ::rust_tinynix::NixUnaryOp::Neg },
+                NixUnaryOp::Not => quote! { ::rust_tinynix::NixUnaryOp::Not },
+            };
+            quote! {
+                ::rust_tinynix::NixExpr::UnaryOp {
+                    op: #op_token,
+                    expr: Box::new(#expr_ast),
+                }
+            }
+        }
+        NixExpr::BinaryOp { op, left, right } => {
+            let left_ast = generate_token_stream(left);
+            let right_ast = generate_token_stream(right);
+            let op_token = match op {
+                NixBinaryOp::Add => quote! { ::rust_tinynix::NixBinaryOp::Add },
+                NixBinaryOp::Sub => quote! { ::rust_tinynix::NixBinaryOp::Sub },
+            };
+            quote! {
+                ::rust_tinynix::NixExpr::BinaryOp {
+                    op: #op_token,
+                    left: Box::new(#left_ast),
+                    right: Box::new(#right_ast),
+                }
+            }
+        }
         NixExpr::InterpolatedString(parts) => {
             let quoted_parts = parts.iter().map(|part| match part {
                 NixStringPart::Literal(s) => {

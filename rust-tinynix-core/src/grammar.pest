@@ -8,17 +8,18 @@ source = { SOI ~ WHITESPACE* ~ nix_expression ~ WHITESPACE* ~ EOI }
 // =====================================================================
 // 2. Keywords
 // =====================================================================
-// A single source of truth for all reserved words.
-keywords = _{ "rec" | "inherit" | "true" | "false" | "null" | "let" | "in" | "with" }
+keywords = _{ "rec" | "inherit" | "true" | "false" | "null" | "let" | "in" | "with" | "!" }
 
 // =====================================================================
 // 3. Expressions (Hierarchical)
 // =====================================================================
-nix_expression = { let_in_expr | with_expr | primary_expr }
-let_in_expr    = { "let" ~ attr_binding+ ~ "in" ~ nix_expression }
-with_expr      = { "with" ~ nix_expression ~ ";" ~ nix_expression }
+nix_expression = { let_in_expr | with_expr | op_expr }
 
-primary_expr = {
+let_in_expr  = { "let" ~ attr_binding+ ~ "in" ~ nix_expression }
+with_expr    = { "with" ~ nix_expression ~ ";" ~ nix_expression }
+op_expr      = { (prefix_op | atomic_expr) ~ (infix_op ~ (prefix_op | atomic_expr))* }
+
+atomic_expr = {
     literal |
     attrset |
     list |
@@ -27,14 +28,20 @@ primary_expr = {
     "(" ~ nix_expression ~ ")"
 }
 
+// -- Operator Groups and Tokens --
+prefix_op = { arith_neg | logic_neg }
+infix_op  = { add | sub }
+
+// Specific operator token definitions
+add = { "+" }
+sub = { "-" }
+arith_neg = { "-" }
+logic_neg = { "!" }
+
 // =====================================================================
 // 4. Building Blocks & Literals
 // =====================================================================
-
-// -- Identifiers --
 identifier_simple = @{
-    // This checks that we are not parsing a keyword followed by a non-identifier character.
-    // This correctly distinguishes `in` (keyword) from `inputs` (identifier).
     !(keywords ~ !(ASCII_ALPHANUMERIC | "_" | "-")) ~
     (ASCII_ALPHA | "_") ~
     (ASCII_ALPHANUMERIC | "_" | "-")*
@@ -44,8 +51,8 @@ identifier        = @{ identifier_part ~ ("." ~ identifier_part)* }
 
 // -- Literals --
 literal = { string | float | integer | boolean | null }
-integer = @{ ("-")? ~ ASCII_DIGIT+ }
-float   = @{ ("-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+integer = @{ ASCII_DIGIT+ }
+float   = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 boolean = @{ "true" | "false" }
 null    = @{ "null" }
 

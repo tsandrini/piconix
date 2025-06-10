@@ -22,6 +22,19 @@ pub enum NixStringPart {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum NixUnaryOp {
+    Neg, // Arithmetic negation
+    Not, // Logical negation
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum NixBinaryOp {
+    Add,
+    Sub,
+}
+
+// TODO: boxes
+#[derive(Debug, Clone, PartialEq)]
 pub enum NixExpr {
     Value(NixValue),
     InterpolatedString(Vec<NixStringPart>),
@@ -30,6 +43,15 @@ pub enum NixExpr {
     AttrSet {
         recursive: bool,
         bindings: IndexMap<String, NixExpr>,
+    },
+    UnaryOp {
+        op: NixUnaryOp,
+        expr: Box<NixExpr>,
+    },
+    BinaryOp {
+        op: NixBinaryOp,
+        left: Box<NixExpr>,
+        right: Box<NixExpr>,
     },
     SearchPath(String),
     LetIn {

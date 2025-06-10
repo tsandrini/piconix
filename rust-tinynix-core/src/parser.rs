@@ -1,77 +1,118 @@
-use crate::{NixExpr, NixStringPart, NixValue};
+use crate::{NixBinaryOp, NixExpr, NixStringPart, NixUnaryOp, NixValue};
 use indexmap::IndexMap;
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
+use pest::pratt_parser::{Assoc, Op, PrattParser};
 use std::path::{Path, PathBuf};
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
 struct NixParser;
 
-fn unwrap_structural_rules(pair: Pair<Rule>) -> Pair<Rule> {
-    match pair.as_rule() {
-        Rule::nix_expression | Rule::primary_expr | Rule::literal | Rule::path_types => {
-            unwrap_structural_rules(pair.into_inner().next().unwrap())
-        }
-        _ => pair,
-    }
+lazy_static::lazy_static! {
+    static ref PRATT_PARSER: PrattParser<Rule> = {
+        use Assoc::*;
+        use Rule::*;
+
+        PrattParser::new()
+            .op(Op::infix(infix_op, Left))
+            .op(Op::prefix(prefix_op))
+    };
 }
 
-fn build_bindings_from_pairs(pairs: Pairs<Rule>, root: &Path) -> IndexMap<String, NixExpr> {
-    let mut bindings: IndexMap<String, NixExpr> = IndexMap::new();
-
-    for attr_binding_pair in pairs {
-        let binding_rule_pair = attr_binding_pair.into_inner().next().unwrap();
-
-        match binding_rule_pair.as_rule() {
-            Rule::binding => {
-                let mut inner_rules = binding_rule_pair.into_inner();
-                let path_pair = inner_rules.next().unwrap();
-                let path_str = path_pair.as_str().to_string();
-                let path: Vec<&str> = path_str.split('.').collect();
-                let expr = build_nix_expr_from_pair(inner_rules.next().unwrap(), root);
-                insert_at_path(&mut bindings, &path, expr);
+fn parse_op_expr(pairs: Pairs<Rule>, root: &Path) -> NixExpr {
+    PRATT_PARSER
+        .map_primary(|primary| build_nix_expr_from_pair(primary, root))
+        .map_prefix(|op, rhs| {
+            let op_pair = op.into_inner().next().unwrap();
+            let op = match op_pair.as_rule() {
+                Rule::arith_neg => NixUnaryOp::Neg,
+                Rule::logic_neg => NixUnaryOp::Not,
+                _ => unreachable!("Encountered non-prefix operator in prefix position"),
+            };
+            NixExpr::UnaryOp {
+                op,
+                expr: Box::new(rhs),
             }
-            Rule::inherit_binding => {
-                let mut inner_inherit = binding_rule_pair.into_inner();
-                let mut scope_ident: Option<String> = None;
-
-                if let Some(token) = inner_inherit.peek() {
-                    if token.as_rule() == Rule::identifier {
-                        scope_ident = Some(token.as_str().to_string());
-                        inner_inherit.next();
-                    }
-                }
-
-                for ident_to_inherit_pair in inner_inherit {
-                    let ident_name = ident_to_inherit_pair.as_str().to_string();
-                    let value_expr = match &scope_ident {
-                        Some(scope) => NixExpr::Ref(format!("{}.{}", scope, ident_name)),
-                        None => NixExpr::Ref(ident_name.clone()),
-                    };
-                    bindings.insert(ident_name, value_expr);
-                }
+        })
+        .map_infix(|lhs, op, rhs| {
+            let op_pair = op.into_inner().next().unwrap();
+            let op = match op_pair.as_rule() {
+                Rule::add => NixBinaryOp::Add,
+                Rule::sub => NixBinaryOp::Sub,
+                _ => unreachable!("Encountered non-infix operator in infix position"),
+            };
+            NixExpr::BinaryOp {
+                op,
+                left: Box::new(lhs),
+                right: Box::new(rhs),
             }
-            _ => unreachable!(
-                "Unexpected rule inside attr_binding: {:?}",
-                binding_rule_pair.as_rule()
-            ),
-        }
-    }
-    bindings
+        })
+        .parse(pairs)
 }
 
 fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
-    let pair = unwrap_structural_rules(pair);
     match pair.as_rule() {
-        Rule::nix_expression => build_nix_expr_from_pair(pair.into_inner().next().unwrap(), root),
+        // --- Structural Rules that simply wrap another rule ---
+        Rule::nix_expression | Rule::atomic_expr | Rule::literal | Rule::path_types => {
+            build_nix_expr_from_pair(pair.into_inner().next().unwrap(), root)
+        }
 
-        // Primitive types
+        // --- Logic Rules ---
+        Rule::op_expr => parse_op_expr(pair.into_inner(), root),
+
+        Rule::let_in_expr => {
+            let mut pairs = pair.into_inner();
+            let body_pair = pairs
+                .next_back()
+                .expect("let-in expression must have a body");
+            let body = build_nix_expr_from_pair(body_pair, root);
+            let bindings = build_bindings_from_pairs(pairs, root);
+            NixExpr::LetIn {
+                bindings,
+                body: Box::new(body),
+            }
+        }
+        Rule::with_expr => {
+            let mut pairs = pair.into_inner();
+            let environment_pair = pairs
+                .next()
+                .expect("with expression must have an environment");
+            let body_pair = pairs.next().expect("with expression must have a body");
+            let environment = build_nix_expr_from_pair(environment_pair, root);
+            let body = build_nix_expr_from_pair(body_pair, root);
+            NixExpr::With {
+                environment: Box::new(environment),
+                body: Box::new(body),
+            }
+        }
+
+        // --- Concrete Atomic Rules ---
         Rule::integer => NixExpr::Value(NixValue::Int(pair.as_str().parse().unwrap())),
         Rule::float => NixExpr::Value(NixValue::Float(pair.as_str().parse().unwrap())),
         Rule::boolean => NixExpr::Value(NixValue::Bool(pair.as_str() == "true")),
         Rule::null => NixExpr::Value(NixValue::Null),
-
+        Rule::identifier => NixExpr::Ref(pair.as_str().to_string()),
+        Rule::list => NixExpr::List(
+            pair.into_inner()
+                .map(|p| build_nix_expr_from_pair(p, root))
+                .collect(),
+        ),
+        Rule::attrset => {
+            let mut inner = pair.into_inner();
+            let mut recursive = false;
+            if let Some(token) = inner.peek() {
+                if token.as_rule() == Rule::rec {
+                    recursive = true;
+                    inner.next();
+                }
+            }
+            let bindings = build_bindings_from_pairs(inner, root);
+            NixExpr::AttrSet {
+                recursive,
+                bindings,
+            }
+        }
         Rule::string => {
             let mut parts: Vec<NixStringPart> = Vec::new();
             for string_content_pair in pair.into_inner() {
@@ -95,7 +136,6 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
                     _ => unreachable!("Unexpected string part: {:?}", part.as_rule()),
                 }
             }
-
             if parts.len() == 1 {
                 if let NixStringPart::Literal(s) = &parts[0] {
                     return NixExpr::Value(NixValue::String(s.clone()));
@@ -112,7 +152,6 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
             } else {
                 path_buf = PathBuf::from(path_str);
             }
-
             let final_path = if path_buf.is_absolute() {
                 path_buf
             } else {
@@ -125,71 +164,54 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
             NixExpr::SearchPath(content.to_string())
         }
 
-        // Compound types
-        Rule::identifier => NixExpr::Ref(pair.as_str().to_string()),
-        Rule::list => NixExpr::List(
-            pair.into_inner()
-                .map(|p| build_nix_expr_from_pair(p, root))
-                .collect(),
-        ),
-
-        Rule::with_expr => {
-            let mut pairs = pair.into_inner();
-            let environment_pair = pairs
-                .next()
-                .expect("with expression must have an environment");
-            let body_pair = pairs.next().expect("with expression must have a body");
-
-            let environment = build_nix_expr_from_pair(environment_pair, root);
-            let body = build_nix_expr_from_pair(body_pair, root);
-
-            NixExpr::With {
-                environment: Box::new(environment),
-                body: Box::new(body),
-            }
-        }
-
-        Rule::let_in_expr => {
-            let mut pairs = pair.into_inner();
-            // The last element of a let_in_expr is always the body expression.
-            let body_pair = pairs
-                .next_back()
-                .expect("let-in expression must have a body");
-            let body = build_nix_expr_from_pair(body_pair, root);
-
-            // All preceding elements are bindings.
-            let bindings = build_bindings_from_pairs(pairs, root);
-
-            NixExpr::LetIn {
-                bindings,
-                body: Box::new(body),
-            }
-        }
-
-        Rule::attrset => {
-            let mut inner = pair.into_inner();
-            let mut recursive = false;
-
-            if let Some(token) = inner.peek() {
-                if token.as_rule() == Rule::rec {
-                    recursive = true;
-                    inner.next(); // Consume the `rec` token
-                }
-            }
-
-            let bindings = build_bindings_from_pairs(inner, root);
-
-            NixExpr::AttrSet {
-                recursive,
-                bindings,
-            }
-        }
+        // --- This catch-all prevents panics for truly unhandled rules.
         _ => unreachable!(
-            "Unexpected grammar rule: {:?} with content '{}'",
+            "build_nix_expr_from_pair: Unhandled rule: `{:?}` with content `{}`",
             pair.as_rule(),
             pair.as_str()
         ),
     }
+}
+
+// build_bindings_from_pairs, insert_at_path, and parse are unchanged
+fn build_bindings_from_pairs(pairs: Pairs<Rule>, root: &Path) -> IndexMap<String, NixExpr> {
+    let mut bindings: IndexMap<String, NixExpr> = IndexMap::new();
+    for attr_binding_pair in pairs {
+        let binding_rule_pair = attr_binding_pair.into_inner().next().unwrap();
+        match binding_rule_pair.as_rule() {
+            Rule::binding => {
+                let mut inner_rules = binding_rule_pair.into_inner();
+                let path_pair = inner_rules.next().unwrap();
+                let path_str = path_pair.as_str().to_string();
+                let path: Vec<&str> = path_str.split('.').collect();
+                let expr = build_nix_expr_from_pair(inner_rules.next().unwrap(), root);
+                insert_at_path(&mut bindings, &path, expr);
+            }
+            Rule::inherit_binding => {
+                let mut inner_inherit = binding_rule_pair.into_inner();
+                let mut scope_ident: Option<String> = None;
+                if let Some(token) = inner_inherit.peek() {
+                    if token.as_rule() == Rule::identifier {
+                        scope_ident = Some(token.as_str().to_string());
+                        inner_inherit.next();
+                    }
+                }
+                for ident_to_inherit_pair in inner_inherit {
+                    let ident_name = ident_to_inherit_pair.as_str().to_string();
+                    let value_expr = match &scope_ident {
+                        Some(scope) => NixExpr::Ref(format!("{}.{}", scope, ident_name)),
+                        None => NixExpr::Ref(ident_name.clone()),
+                    };
+                    bindings.insert(ident_name, value_expr);
+                }
+            }
+            _ => unreachable!(
+                "Unexpected rule inside attr_binding: {:?}",
+                binding_rule_pair.as_rule()
+            ),
+        }
+    }
+    bindings
 }
 
 fn insert_at_path(attrset: &mut IndexMap<String, NixExpr>, path: &[&str], value: NixExpr) {
@@ -198,12 +220,10 @@ fn insert_at_path(attrset: &mut IndexMap<String, NixExpr>, path: &[&str], value:
         attrset.insert(key, value);
         return;
     }
-
     let entry = attrset.entry(key).or_insert_with(|| NixExpr::AttrSet {
         recursive: false,
         bindings: IndexMap::new(),
     });
-
     if let NixExpr::AttrSet { bindings, .. } = entry {
         insert_at_path(bindings, &path[1..], value);
     } else {
