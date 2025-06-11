@@ -4,37 +4,26 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
 struct NixParser;
 
-lazy_static::lazy_static! {
-    static ref PRATT_PARSER: PrattParser<Rule> = {
+static PRATT_PARSER: OnceLock<PrattParser<Rule>> = OnceLock::new();
+
+fn get_pratt_parser() -> &'static PrattParser<Rule> {
+    PRATT_PARSER.get_or_init(|| {
         use Assoc::*;
         use Rule::*;
 
-        PrattParser::new()
-            .op(Op::infix(infix_op, Left))
-            .op(Op::prefix(prefix_op))
-    };
+        PrattParser::new().op(Op::infix(infix_op, Left))
+    })
 }
 
 fn parse_op_expr(pairs: Pairs<Rule>, root: &Path) -> NixExpr {
-    PRATT_PARSER
+    get_pratt_parser()
         .map_primary(|primary| build_nix_expr_from_pair(primary, root))
-        .map_prefix(|op, rhs| {
-            let op_pair = op.into_inner().next().unwrap();
-            let op = match op_pair.as_rule() {
-                Rule::arith_neg => NixUnaryOp::Neg,
-                Rule::logic_neg => NixUnaryOp::Not,
-                _ => unreachable!("Encountered non-prefix operator in prefix position"),
-            };
-            NixExpr::UnaryOp {
-                op,
-                expr: Box::new(rhs),
-            }
-        })
         .map_infix(|lhs, op, rhs| {
             let op_pair = op.into_inner().next().unwrap();
             let op = match op_pair.as_rule() {
@@ -60,7 +49,6 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
 
         // --- Logic Rules ---
         Rule::op_expr => parse_op_expr(pair.into_inner(), root),
-
         Rule::let_in_expr => {
             let mut pairs = pair.into_inner();
             let body_pair = pairs
@@ -85,6 +73,27 @@ fn build_nix_expr_from_pair(pair: Pair<Rule>, root: &Path) -> NixExpr {
                 environment: Box::new(environment),
                 body: Box::new(body),
             }
+        }
+        Rule::term => {
+            let mut pairs = pair.into_inner();
+            let atomic_pair = pairs.next_back().unwrap();
+            let mut current_expr = build_nix_expr_from_pair(atomic_pair, root);
+
+            // The remaining pairs are prefix_ops. We iterate in reverse to apply them
+            // from the inside out (closest to the atomic_expr first).
+            for op_pair in pairs.rev() {
+                let inner_op = op_pair.into_inner().next().unwrap();
+                let op = match inner_op.as_rule() {
+                    Rule::arith_neg => NixUnaryOp::Neg,
+                    Rule::logic_neg => NixUnaryOp::Not,
+                    _ => unreachable!("Encountered a non-prefix operator in a term"),
+                };
+                current_expr = NixExpr::UnaryOp {
+                    op,
+                    expr: Box::new(current_expr),
+                };
+            }
+            current_expr
         }
 
         // --- Concrete Atomic Rules ---
